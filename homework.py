@@ -38,6 +38,7 @@ HOMEWORK_STATUSES = {
 
 def send_message(bot, message):
     """Отправляет сообщение в Telegram чат."""
+
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logger.info(f'Сообщение {message} отправлено.')
@@ -77,6 +78,7 @@ def check_response(response):
     Если ответ API соответствует ожиданиям,
     то функция вернет список домашних работ.
     """
+
     if response == {}:
         error_message = 'Словарь значений пуст'
         logger.error(error_message)
@@ -121,6 +123,7 @@ def check_tokens():
     для работы программы. Если отсутствует хотя бы одна
     переменная окружения — функция вернет False, иначе — True.
     """
+
     if PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
         return True
     else:
@@ -159,12 +162,7 @@ def main():
         try:
             homeworks = check_response(response)
             if homeworks[0].get('status') != status:
-                try:
-                    status = homeworks[0].get('status')
-                except ValueError as error:
-                    error_message = f'Ошибка лоступа по ключу status {error}'
-                    send_message(bot, error_message)
-                    logger.error(error_message)
+                status = homeworks[0].get('status')
                 message = parse_status(homeworks[0])
                 send_message(bot, message)
             else:
