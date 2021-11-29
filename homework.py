@@ -38,7 +38,6 @@ HOMEWORK_STATUSES = {
 
 def send_message(bot, message):
     """Отправляет сообщение в Telegram чат."""
-
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logger.info(f'Сообщение {message} отправлено.')
@@ -52,7 +51,6 @@ def get_api_answer(current_timestamp):
     В случае успешного запроса возвращает ответ API,
     преобразовав его из формата JSON к типам данных Python.
     """
-
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
     response = requests.get(
@@ -73,12 +71,11 @@ def get_api_answer(current_timestamp):
 
 
 def check_response(response):
-    """Проверяет ответ API на корректность. В качестве параметра функция
-    получает ответ API, приведенный к типам данных Python.
-    Если ответ API соответствует ожиданиям,
-    то функция вернет список домашних работ.
+    """Проверяет ответ API на корректность. В качестве
+    параметра функция получает ответ API, приведенный 
+    к типам данных Python.Если ответ API соответствует 
+    ожиданиям, то функция вернет список домашних работ.
     """
-
     if response == {}:
         error_message = 'Словарь значений пуст'
         logger.error(error_message)
@@ -96,8 +93,8 @@ def check_response(response):
 
 
 def parse_status(homework):
-    """Извлекает из информации о конкретной домашней
-    работе статус этой работы.
+    """Извлекает из информации о
+    конкретной домашней работе статус этой работы.
     """
     try:
         homework_name = homework.get('homework_name')
@@ -119,11 +116,11 @@ def parse_status(homework):
 
 
 def check_tokens():
-    """Проверяет доступность переменных окружения, которые необходимы
-    для работы программы. Если отсутствует хотя бы одна
-    переменная окружения — функция вернет False, иначе — True.
+    """Проверяет доступность переменных окружения,
+    которые необходимы для работы программы. Если 
+    отсутствует хотя бы одна переменная окружения — 
+    функция вернет False, иначе — True.
     """
-
     if PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
         return True
     else:
@@ -144,7 +141,6 @@ def check_tokens():
 
 def main():
     """Основная логика работы бота."""
-
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
     status = ''
