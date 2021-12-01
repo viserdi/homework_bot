@@ -6,6 +6,7 @@ import time
 import requests
 import telegram
 from dotenv import load_dotenv
+from http import HTTPStatus
 
 from exceptions import (CheckResponseException, GetApiException,
                         SendMessageException, StatusCodeException)
@@ -23,6 +24,11 @@ logger.addHandler(streamHandler)
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
+ENV_CONST_DICT = {
+    'PRACTICUM_TOKEN': PRACTICUM_TOKEN,
+    'TELEGRAM_TOKEN': TELEGRAM_TOKEN,
+    'TELEGRAM_CHAT_ID': TELEGRAM_CHAT_ID,
+}
 
 RETRY_TIME = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
@@ -53,12 +59,17 @@ def get_api_answer(current_timestamp):
     """
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
-    response = requests.get(
-        ENDPOINT,
-        headers=HEADERS,
-        params=params
-    )
-    if response.status_code != 200:
+    try:
+        response = requests.get(
+            ENDPOINT,
+            headers=HEADERS,
+            params=params
+        )
+    except GetApiException:
+        error_message = f'Не удалось подключиться по API {ENDPOINT}'
+        logger.error(error_message)
+        raise GetApiException(error_message)
+    if response.status_code != HTTPStatus.OK:
         error_message = (
             f'Ошибка подключения к серверу Яндекс.Практикум'
             f' status code: {response.status_code}'
@@ -67,7 +78,16 @@ def get_api_answer(current_timestamp):
         raise StatusCodeException(
             f'Код отличный от 200: {response.status_code}'
         )
-    return response.json()
+    response = response.json()
+    keys = ['error', 'code']
+    for key in keys:
+        if key in response:
+            error = response[key]
+            error_message = (f'Ошибка ответа по API: {ENDPOINT} '
+                             f'Описание {error}')
+            logger.error(error_message)
+            raise GetApiException(error_message)
+    return response
 
 
 def check_response(response):
@@ -79,16 +99,17 @@ def check_response(response):
     if response == {}:
         error_message = 'Словарь значений пуст'
         logger.error(error_message)
-        raise Exception(error_message)
-    hw_list = response['homeworks']
-    if hw_list is None:
+        raise CheckResponseException(error_message)
+    try:
+        hw_list = response['homeworks']
+    except KeyError:
         error_message = 'Ответ Api не содержит ключа homeworks'
         logger.error(error_message)
-        raise Exception(error_message)
+        raise CheckResponseException(error_message)
     if type(hw_list) != list:
         error_message = 'Ответ по ключу homeworks не является списком'
         logger.error(error_message)
-        raise Exception(error_message)
+        raise CheckResponseException(error_message)
     return hw_list
 
 
@@ -99,13 +120,13 @@ def parse_status(homework):
     except KeyError as error:
         error_message = f'Ошибка доступа по ключу homework_name {error}'
         logger.error(error_message)
-        return error_message
+        raise KeyError(error_message)
     try:
         homework_status = homework.get('status')
     except KeyError as error:
         error_message = f'Ошибка доступа по ключу status {error}'
         logger.error(error_message)
-        return error_message
+        raise KeyError(error_message)
     verdict = HOMEWORK_STATUSES[homework_status]
     if verdict is None:
         verdict = 'Ошибка в статуcе домашки'
@@ -121,18 +142,11 @@ def check_tokens():
     if PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
         return True
     else:
-        if PRACTICUM_TOKEN is None:
-            logger.critical(
-                'Отсутствует переменная окружения PRACTICUM_TOKEN'
-            )
-        if TELEGRAM_TOKEN is None:
-            logger.critical(
-                'Отсутствует переменная окружения TELEGRAM_TOKEN'
-            )
-        if TELEGRAM_CHAT_ID is None:
-            logger.critical(
-                'Отсутствует переменная окружения TELEGRAM_CHAT_ID'
-            )
+        for key in ENV_CONST_DICT:
+            if ENV_CONST_DICT[key] is None:
+                logger.critical(
+                    f'Отсутствует переменная окружения {key}'
+                )
         return False
 
 
